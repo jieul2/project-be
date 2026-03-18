@@ -3,6 +3,8 @@
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true, // 확장자를 쓰고 싶을 때를 대비해 허용 (선택 사항)
+    "noEmit": true, // Bundler 모드 사용 시 보통 true로 설정
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { serve } from "@hono/node-server";
-import app from "./app.js";
-import { connectDB } from "./config/db.js";
+import app from "./app";
+import { connectDB } from "./config/db";
 
 const port = Number(process.env.PORT) || 8080;
 
