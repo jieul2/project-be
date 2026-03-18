@@ -77,7 +77,7 @@ authController.signin = async (c: Context) => {
       role: user.role,
       exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1시간 유효
     };
-    const token = await sign(payload, secret);
+    const token = await sign(payload, secret, "HS256");
 
     return c.json({ message: "로그인 성공", token });
   } catch (err) {
