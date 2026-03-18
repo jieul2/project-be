@@ -1,9 +1,7 @@
 import { Hono } from "hono";
-
+import authApi from "./auth.api";
 const router = new Hono();
 
-router.get("/", (c) => {
-  return c.text("Hello, World!");
-});
+router.route("/auth", authApi);
 
 export default router;
