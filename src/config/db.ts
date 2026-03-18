@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 
 export const connectDB = async () => {
   try {
-    const uri = process.env.MONGO_URI;
-    if (!uri) throw new Error("MONGO_URI is missing!");
+    const uri = process.env.MONGO_URL;
+    if (!uri) throw new Error("MONGO_URL is missing!");
 
     await mongoose.connect(uri);
     console.log("몽고디비 연결 성공!");

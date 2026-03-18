@@ -13,6 +13,6 @@ app.use(
     credentials: true,
   }),
 );
-app.route("api", indexRouter);
+app.route("/api", indexRouter);
 
 export default app;
