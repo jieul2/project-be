@@ -12,11 +12,19 @@ authController.signup = async (c: Context) => {
   try {
     const { email, password, username, role, phone } = await c.req.json();
 
+    // 필수 필드 검증
     if (!email || !password || !username || !role || !phone) {
-      throw new Error("모든 필드 입력 오류");
+      throw new Error("모든 필드가 필요합니다.");
     }
-    const hashed = await bcrypt.hash(password, 10);
 
+    // 이메일 중복 검증
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      throw new Error("이미 존재하는 사용자입니다.");
+    }
+    // 비밀번호 해싱
+    const hashed = await bcrypt.hash(password, 10);
+    // 사용자 생성
     const user = await User.create({
       email,
       password: hashed,
