@@ -1,8 +1,8 @@
 import { Context } from "hono";
 
 export interface AuthController {
-  signup: (c: Context) => Promise<Response>;
-  signin: (c: Context) => Promise<Response>;
+  createSignup: (c: Context) => Promise<Response>;
+  createSignin: (c: Context) => Promise<Response>;
 }
 
 export interface JwtPayload {

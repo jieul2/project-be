@@ -2,12 +2,12 @@ import User from "../models/User";
 import { decode, sign, verify } from "hono/jwt";
 import * as bcrypt from "bcrypt-ts";
 import { Context } from "hono";
-import { AuthController } from "../types/auth";
-import { JwtPayload } from "../types/auth";
+import { AuthController } from "../types/auth.types";
+import { JwtPayload } from "../types/auth.types";
 
 const authController: AuthController = {} as AuthController;
 
-authController.signup = async (c: Context) => {
+authController.createSignup = async (c: Context) => {
   try {
     const { email, password, username, role, phone } = await c.req.json();
 
@@ -41,7 +41,7 @@ authController.signup = async (c: Context) => {
   }
 };
 
-authController.signin = async (c: Context) => {
+authController.createSignin = async (c: Context) => {
   try {
     const { email, password } = await c.req.json();
 
