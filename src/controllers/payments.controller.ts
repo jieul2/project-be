@@ -10,12 +10,12 @@ paymentsController.getPayments = async (c: Context) => {
     if (!payments) {
       throw new Error("결제 정보를 찾을 수 없습니다.");
     }
-    return c.json({ payments });
+    return c.json({ payments }, 200);
   } catch (err) {
     if (err instanceof Error) {
-      return c.json({ message: "결제 조회 실패", error: err.message }, 500);
+      return c.json({ message: "결제 조회 실패", error: err.message }, 400);
     }
-    return c.json({ message: "결제 조회 실패", error: "알 수 없는 오류" }, 500);
+    return c.json({ message: "결제 조회 실패", error: "알 수 없는 오류" }, 400);
   }
 };
 
@@ -37,12 +37,12 @@ paymentsController.updateStatus = async (c: Context) => {
     payment.status = status;
     await payment.save();
 
-    return c.json({ message: "결제 상태 업데이트 성공", payment });
+    return c.json({ message: "결제 상태 업데이트 성공", payment }, 200);
   } catch (err) {
     if (err instanceof Error) {
-      return c.json({ message: "결제 상태 업데이트 실패", error: err.message }, 500);
+      return c.json({ message: "결제 상태 업데이트 실패", error: err.message }, 400);
     }
-    return c.json({ message: "결제 상태 업데이트 실패", error: "알 수 없는 오류" }, 500);
+    return c.json({ message: "결제 상태 업데이트 실패", error: "알 수 없는 오류" }, 400);
   }
 };
 
