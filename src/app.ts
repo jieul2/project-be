@@ -31,6 +31,6 @@ app.onError((err, c) => {
   );
 });
 
-app.route("api", indexRouter);
+app.route("/api", indexRouter);
 
 export default app;

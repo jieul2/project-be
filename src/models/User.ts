@@ -4,7 +4,7 @@ import { Schema, model, InferSchemaType } from "mongoose";
 const userSchema = new Schema(
   {
     username: { type: String, required: true, unique: true },
-    role: { type: String, enum: ["user", "instructor", "admin"], default: "user" },
+    role: { type: String, enum: ["student", "instructor", "admin"], default: "user" },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     phone: { type: String },
     email: { type: String, required: true, unique: true },
