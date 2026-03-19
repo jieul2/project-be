@@ -11,7 +11,7 @@ calendarController.getCalendar = async (c: Context) => {
       throw new Error("사용자 ID가 필요합니다.");
     }
 
-    const events = await Calendar.find({});
+    const events = await Calendar.find({ userId: userId.id });
     return c.json({ events }, 200);
   } catch (err) {
     if (err instanceof Error) {
@@ -39,6 +39,7 @@ calendarController.createEvent = async (c: Context) => {
       end,
       category,
       description,
+      userId: userId.id,
     });
 
     return c.json({ message: "일정 생성 성공", event }, 200);
@@ -88,7 +89,7 @@ calendarController.deleteEvent = async (c: Context) => {
 
     const { eventId } = c.req.param();
 
-    const event = await Calendar.findOneAndDelete({ _id: eventId });
+    const event = await Calendar.findOneAndDelete({ _id: eventId, userId: userId.id });
 
     if (!event) {
       throw new Error("일정을 찾을 수 없습니다.");
