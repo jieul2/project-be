@@ -11,6 +11,12 @@ calendarController.getCalendar = async (c: Context) => {
       throw new Error("사용자 ID가 필요합니다.");
     }
 
+    // 관리자는 모든 일정을 조회할 수 있고, 일반 사용자는 자신의 일정만 조회할 수 있도록 구현
+    if (userId.role === "admin") {
+      const events = await Calendar.find();
+      return c.json({ events }, 200);
+    }
+
     const events = await Calendar.find({ userId: userId.id });
     return c.json({ events }, 200);
   } catch (err) {
@@ -64,7 +70,7 @@ calendarController.updateEvent = async (c: Context) => {
     const event = await Calendar.findOneAndUpdate(
       { _id: eventId },
       { title, start, end, category, description },
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!event) {
