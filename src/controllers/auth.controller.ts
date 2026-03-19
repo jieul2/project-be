@@ -2,11 +2,9 @@ import User from "../models/User";
 import { decode, sign, verify } from "hono/jwt";
 import * as bcrypt from "bcrypt-ts";
 import { Context } from "hono";
+import { AuthController } from "../types/auth";
+import { JwtPayload } from "../types/auth";
 
-interface AuthController {
-  signup: (c: Context) => Promise<Response>;
-  signin: (c: Context) => Promise<Response>;
-}
 const authController: AuthController = {} as AuthController;
 
 authController.signup = async (c: Context) => {
@@ -70,11 +68,12 @@ authController.signin = async (c: Context) => {
     }
 
     // JWT 생성
-    const payload = {
+    const payload: JwtPayload = {
       id: String(user._id),
       username: user.username,
       email: user.email,
       role: user.role,
+      phone: user.phone || "",
       exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1시간 유효
     };
     const token = await sign(payload, secret, "HS256");
