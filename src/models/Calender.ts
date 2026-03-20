@@ -3,6 +3,7 @@ import { Schema, model, InferSchemaType } from "mongoose";
 // 1. 스키마 정의 (값 정의)
 const calendarSchema = new Schema(
   {
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     title: { type: String, required: true },
     start: { type: Date, required: true },
     end: { type: Date, required: true },

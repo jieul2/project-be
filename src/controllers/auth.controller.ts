@@ -32,7 +32,7 @@ authController.createSignup = async (c: Context) => {
       phone,
     });
 
-    return c.json({ message: "회원가입 성공", user }, 201);
+    return c.json({ message: "회원가입 성공", user }, 200);
   } catch (err) {
     if (err instanceof Error) {
       return c.json({ message: "회원가입 실패", error: err.message }, 400);
