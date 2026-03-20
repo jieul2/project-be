@@ -4,11 +4,17 @@ import { Schema, model, InferSchemaType } from "mongoose";
 const userSchema = new Schema(
   {
     username: { type: String, required: true, unique: true },
-    role: { type: String, enum: ["student", "instructor", "admin"], default: "user" },
+    // role: 기존 설정에 "parent"와 기본값인 "user"를 enum에 추가하여 유효성 검사 에러 방지
+    role: { 
+      type: String, 
+      enum: ["student", "instructor", "admin", "parent", "user"], 
+      default: "user" 
+    },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     phone: { type: String },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
+    children: [{ type: Schema.Types.ObjectId, ref: "User" }],
   },
   { timestamps: true },
 );
