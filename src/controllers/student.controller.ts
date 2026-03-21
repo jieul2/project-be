@@ -6,6 +6,7 @@ import ParentStudent from "../models/ParentStudent";
 import { Context } from "hono";
 import { StudentController, StudentSearchQuery } from "../types/student.types";
 
+
 const studentController: StudentController = {} as StudentController;
 
 // 학생 목록 조회
@@ -13,8 +14,13 @@ studentController.getStudents = async (c: Context) => {
   try {
     const searchName = c.req.query("name");
     
-    // 기본 조건: 학생 롤을 가진 사용자
-    const query: StudentSearchQuery = { role: "user" };
+    const parentMappings = await ParentStudent.find().select("parentId");
+    const parentIds = parentMappings.map(m => m.parentId);
+    
+    const query: StudentSearchQuery = { 
+      role: "user",
+      _id: { $nin: parentIds }
+    };
     
     if (searchName) {
       query.username = { $regex: searchName, $options: "i" };

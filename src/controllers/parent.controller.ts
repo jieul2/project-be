@@ -10,7 +10,11 @@ parentController.getParents = async (c: Context) => {
   try {
     const parentStudentMappings = await ParentStudent.find().populate("studentId", "username email phone status");
 
-    const parentIds = [...new Set(parentStudentMappings.map((m) => String(m.parentId)))];
+    if (!parentStudentMappings || parentStudentMappings.length === 0) {
+      return c.json({ parents: [] });
+    }
+
+    const parentIds = [...new Set(parentStudentMappings.map((m) => m.parentId.toString()))];
 
     const parents = await User.find({
       _id: { $in: parentIds },
@@ -19,8 +23,9 @@ parentController.getParents = async (c: Context) => {
 
     const parentsWithStudents = parents.map((parent) => {
       const students = parentStudentMappings
-        .filter((mapping) => String(mapping.parentId) === String(parent._id))
-        .map((mapping) => mapping.studentId);
+        .filter((mapping) => mapping.parentId.toString() === parent._id.toString())
+        .map((mapping) => mapping.studentId)
+        .filter(Boolean); 
 
       return { ...parent, students };
     });
