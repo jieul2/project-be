@@ -9,6 +9,7 @@ export interface ClassesController {
   getAttendance: (c: Context) => Promise<Response>;
   getClassReport: (c: Context) => Promise<Response>;
   checkAttendance: (c: Context) => Promise<Response>;
+  createClassReport: (c: Context) => Promise<Response>;
 }
 
 export interface AttendanceRecordPayload {
