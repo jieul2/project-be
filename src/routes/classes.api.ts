@@ -15,6 +15,8 @@ router.put("/:classId", authMiddleware, classesController.updateClass);
 router.delete("/:classId", authMiddleware, classesController.deleteClass);
 // 출석 조회
 router.get("/:classId/attendance", authMiddleware, classesController.getAttendance);
+// 출석 기록
+router.post("/:classId/attendance", authMiddleware, classesController.checkAttendance);
 // 수업 보고서 조회
 router.get("/:classId/report", authMiddleware, classesController.getClassReport);
 
