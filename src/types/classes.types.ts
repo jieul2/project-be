@@ -8,4 +8,12 @@ export interface ClassesController {
   deleteClass: (c: Context) => Promise<Response>;
   getAttendance: (c: Context) => Promise<Response>;
   getClassReport: (c: Context) => Promise<Response>;
+  checkAttendance: (c: Context) => Promise<Response>;
+  createClassReport: (c: Context) => Promise<Response>;
+}
+
+export interface AttendanceRecordPayload {
+  studentId: string;
+  status: "present" | "absent" | "late";
+  reason?: string;
 }
