@@ -7,9 +7,11 @@ import attendanceApi from "./attendance.api";
 import classReportsApi from "./classReports.api";
 import paymentsApi from "./Payments.api";
 import calendarApi from "./calendar.api";
+import subjectApi from "./subject.api";
 
 const router = new Hono();
 
+router.route("/subject", subjectApi);
 router.route("/user", userApi);
 router.route("/auth", authApi);
 router.route("/students", studentApi);
