@@ -2,6 +2,7 @@ import User from "../models/User";
 import Achievement from "../models/Achievement";
 import Class from "../models/Class";
 import Counsel from "../models/Counsel";
+import ParentStudent from "../models/ParentStudent";
 import { Context } from "hono";
 import { StudentController } from "../types/student.types";
 
@@ -68,16 +69,61 @@ studentController.getStudentById = async (c: Context) => {
 // 학부모 목록 조회
 studentController.getParents = async (c: Context) => {
   try {
-    const parents = await User.find({ role: "parent" })
-      .select("-password")
-      .populate("children", "username email phone status");
+    const parents = await User.find({ role: "parent" }).select("-password").lean();
 
-    return c.json({ parents });
+    const parentIds = parents.map((p) => p._id);
+
+    const parentStudentMappings = await ParentStudent.find({
+      parentId: { $in: parentIds },
+    }).populate("studentId", "username email phone status");
+
+    const parentsWithStudents = parents.map((parent) => {
+      const students = parentStudentMappings
+        .filter((mapping) => String(mapping.parentId) === String(parent._id))
+        .map((mapping) => mapping.studentId);
+
+      return { ...parent, students };
+    });
+
+    return c.json({ parents: parentsWithStudents });
   } catch (err) {
     if (err instanceof Error) {
       return c.json({ message: "학부모 목록 조회 실패", error: err.message }, 500);
     }
     return c.json({ message: "학부모 목록 조회 실패", error: "알 수 없는 오류" }, 500);
+  }
+};
+
+// 학부모-학생 연결 (Mapping 생성)
+studentController.linkParentAndStudent = async (c: Context) => {
+  try {
+    // 권한 체크: 관리자나 강사만 연결 가능하게 설정 (선택 사항)
+    const user = c.get("user");
+    if (!user || (user.role !== "admin" && user.role !== "instructor")) {
+      return c.json({ message: "권한이 없습니다." }, 403);
+    }
+
+    const { parentId, studentId } = await c.req.json();
+
+    if (!parentId || !studentId) {
+      throw new Error("학부모 ID와 학생 ID가 모두 필요합니다.");
+    }
+
+    // 이미 연결되어 있는지 확인
+    const existingMapping = await ParentStudent.findOne({ parentId, studentId });
+    if (existingMapping) {
+      return c.json({ message: "이미 연결된 학부모와 학생입니다." }, 400);
+    }
+
+    // 새로운 연결 생성
+    const mapping = await ParentStudent.create({ parentId, studentId });
+
+    return c.json({ message: "학부모와 학생이 성공적으로 연결되었습니다.", mapping }, 201);
+  } catch (err) {
+    if (err instanceof Error) {
+      return c.json({ message: "연결 실패", error: err.message }, 500);
+    }
+    return c.json({ message: "연결 실패", error: "알 수 없는 오류" }, 500);
   }
 };
 
