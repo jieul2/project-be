@@ -4,7 +4,7 @@ import Class from "../models/Class";
 import Counsel from "../models/Counsel";
 import ParentStudent from "../models/ParentStudent";
 import { Context } from "hono";
-import { StudentController } from "../types/student.types";
+import { StudentController, StudentSearchQuery } from "../types/student.types";
 
 const studentController: StudentController = {} as StudentController;
 
@@ -14,7 +14,7 @@ studentController.getStudents = async (c: Context) => {
     const searchName = c.req.query("name");
     
     // 기본 조건: 학생 롤을 가진 사용자
-    const query: any = { role: "student" };
+    const query: StudentSearchQuery = { role: "student" };
     
     if (searchName) {
       query.username = { $regex: searchName, $options: "i" };

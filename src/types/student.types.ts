@@ -6,3 +6,8 @@ export interface StudentController {
   getParents: (c: Context) => Promise<Response>;
   linkParentAndStudent: (c: Context) => Promise<Response>;
 }
+
+export interface StudentSearchQuery {
+  role: string;
+  username?: { $regex: string; $options: string };
+}

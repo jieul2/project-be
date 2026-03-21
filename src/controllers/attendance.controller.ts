@@ -1,6 +1,7 @@
 import Attendance from "../models/Attendance";
 import { Context } from "hono";
 import { AttendanceController } from "../types/attendance.types";
+import { AttendanceRecordPayload } from "../types/attendance.types";
 
 const attendanceController: AttendanceController = {} as AttendanceController;
 
@@ -20,7 +21,7 @@ attendanceController.checkAttendance = async (c: Context) => {
       throw new Error("수업 ID, 날짜, 그리고 출석 기록 배열(records)이 필요합니다.");
     }
 
-    const attendanceDocs = records.map((record: any) => ({
+    const attendanceDocs = records.map((record: AttendanceRecordPayload) => ({
       classId,
       date: new Date(date),
       studentId: record.studentId,
