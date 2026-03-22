@@ -10,5 +10,7 @@ router.get("/:studentId", authMiddleware, studentController.getStudentById);
 router.get("/:studentId/counsels", authMiddleware, counselController.getCounselHistory);
 router.post("/link", authMiddleware, studentController.linkParentAndStudent);
 router.post("/mapping-info", authMiddleware, studentController.getMappingByStudentId);
+router.get("/counsels/:counselId/analyze", authMiddleware, counselController.analyzeCounsel);
+router.get("/counsels/:counselId/message", authMiddleware, counselController.generateMessage);
 
 export default router;
