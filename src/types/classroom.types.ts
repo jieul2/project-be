@@ -1,12 +1,12 @@
 import { Context } from "hono";
 
-export interface ClassesController {
-  // 클래스 조회
-  getClasses: (c: Context) => Promise<Response>;
-  // 클래스 등록
-  createClass: (c: Context) => Promise<Response>;
-  // 클래스 수정
-  updateClass: (c: Context) => Promise<Response>;
-  // 클래스 삭제
-  deleteClass: (c: Context) => Promise<Response>;
+export interface ClassroomController {
+  // 강의실 조회
+  getClassroom: (c: Context) => Promise<Response>;
+  // 강의실 등록
+  createClassroom: (c: Context) => Promise<Response>;
+  // 강의실 수정
+  updateClassroom: (c: Context) => Promise<Response>;
+  // 강의실 삭제
+  deleteClassroom: (c: Context) => Promise<Response>;
 }

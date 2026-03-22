@@ -3,7 +3,7 @@ import { Schema, model, InferSchemaType } from "mongoose";
 // 1. 스키마 정의 (값 정의)
 const achievementSchema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    studentId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: true },
     score: { type: Number, required: true },
   },

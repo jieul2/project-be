@@ -1,10 +1,10 @@
 import { Context } from "hono";
 import Classroom from "../models/Classroom";
-import { ClassesController } from "../types/classroom.types";
+import { ClassroomController } from "../types/classroom.types";
 
-const classroomController: ClassesController = {} as ClassesController;
+const classroomController: ClassroomController = {} as ClassroomController;
 
-classroomController.getClasses = async (c: Context) => {
+classroomController.getClassroom = async (c: Context) => {
   try {
     const classrooms = await Classroom.find();
     return c.json({ classrooms }, 200);
@@ -16,7 +16,7 @@ classroomController.getClasses = async (c: Context) => {
   }
 };
 
-classroomController.createClass = async (c: Context) => {
+classroomController.createClassroom = async (c: Context) => {
   try {
     const { classroomName } = await c.req.json();
     if (!classroomName) {
@@ -33,17 +33,17 @@ classroomController.createClass = async (c: Context) => {
   }
 };
 
-classroomController.updateClass = async (c: Context) => {
+classroomController.updateClassroom = async (c: Context) => {
   try {
-    const { classId } = c.req.param();
+    const { classroomId } = c.req.param();
     const { classroomName } = await c.req.json();
     if (!classroomName) {
       throw new Error("강의실 이름이 필요합니다.");
     }
     const updatedClassroom = await Classroom.findByIdAndUpdate(
-      classId,
+      classroomId,
       { classroomName },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!updatedClassroom) {
       throw new Error("강의실을 찾을 수 없습니다.");
@@ -60,10 +60,10 @@ classroomController.updateClass = async (c: Context) => {
   }
 };
 
-classroomController.deleteClass = async (c: Context) => {
+classroomController.deleteClassroom = async (c: Context) => {
   try {
-    const { classId } = c.req.param();
-    const deletedClassroom = await Classroom.findByIdAndDelete(classId);
+    const { classroomId } = c.req.param();
+    const deletedClassroom = await Classroom.findByIdAndDelete(classroomId);
     if (!deletedClassroom) {
       throw new Error("강의실을 찾을 수 없습니다.");
     }
