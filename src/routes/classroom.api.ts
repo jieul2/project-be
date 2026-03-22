@@ -1,12 +1,12 @@
 import { Hono } from "hono";
-import classesController from "../controllers/classes.controller";
+import classroomController from "../controllers/classroom.controller";
 import { authMiddleware } from "../middlewares/auth.middleware";
 
 const router = new Hono();
 
-router.get("/", authMiddleware, classesController.getClasses);
-router.post("/", authMiddleware, classesController.createClass);
-router.put("/:classId", authMiddleware, classesController.updateClass);
-router.delete("/:classId", authMiddleware, classesController.deleteClass);
+router.get("/", authMiddleware, classroomController.getClassroom);
+router.post("/", authMiddleware, classroomController.createClassroom);
+router.put("/:classroomId", authMiddleware, classroomController.updateClassroom);
+router.delete("/:classroomId", authMiddleware, classroomController.deleteClassroom);
 
 export default router;

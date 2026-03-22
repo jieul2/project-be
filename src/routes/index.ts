@@ -8,6 +8,7 @@ import calendarApi from "./calendar.api";
 import classesApi from "./classes.api";
 import subjectApi from "./subject.api";
 import classroomApi from "./classroom.api";
+import achievementApi from "./achievement.api";
 
 const router = new Hono();
 
@@ -20,4 +21,5 @@ router.route("/payments", paymentsApi);
 router.route("/calendar", calendarApi);
 router.route("/classes", classesApi);
 router.route("/classrooms", classroomApi);
+router.route("/achievements", achievementApi);
 export default router;
