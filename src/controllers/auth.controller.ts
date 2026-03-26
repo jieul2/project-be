@@ -9,10 +9,10 @@ const authController: AuthController = {} as AuthController;
 
 authController.createSignup = async (c: Context) => {
   try {
-    const { email, password, username, role, phone } = await c.req.json();
+    const { email, password, username, role, phone, birthDate, gender } = await c.req.json();
 
     // 필수 필드 검증
-    if (!email || !password || !username || !role || !phone) {
+    if (!email || !password || !username || !role || !phone || !birthDate || !gender) {
       throw new Error("모든 필드가 필요합니다.");
     }
 
@@ -30,6 +30,8 @@ authController.createSignup = async (c: Context) => {
       username,
       role,
       phone,
+      birthDate,
+      gender,
     });
 
     return c.json({ message: "회원가입 성공", user }, 200);
@@ -74,6 +76,8 @@ authController.createSignin = async (c: Context) => {
       email: user.email,
       role: user.role,
       phone: user.phone || "",
+      birthDate: user.birthDate || "",
+      gender: user.gender || "",
       exp: Math.floor(Date.now() / 1000) + 60 * 60, // 1시간 유효
     };
     const token = await sign(payload, secret, "HS256");
