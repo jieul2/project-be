@@ -1,40 +1,72 @@
 import OpenAI from "openai";
 
 const AI_PROMPTS = {
-CLASS_SUMMARY: `다음 수업 기록 데이터를 요약해줘.
+  CLASS_SUMMARY: `Summarize the class logs into a JSON object in Korean.
+Rules:
+1. Extract "progress" and "homework" per class. Max 1 line each.
+2. Be concise. Keep core math terms.
+3. Sort chronologically.
+4. Output only JSON
 
-  조건:
-  1. 각 수업별로 "진도(progress)"와 "숙제(homework)"를 나눠서 작성할 것
-  2. 각 수업 요약은 총 2줄 이내로 작성할 것 (진도 1줄, 숙제 1줄)
-  3. 불필요한 설명 없이 핵심만 간단히 요약할 것
-  4. 수학 용어와 핵심 개념은 유지할 것
-  5. 여러 수업이 있을 경우 시간 순서대로 정리할 것
-  6. 반드시 아래의 JSON 배열(Array) 형식으로만 응답할 것:
-  [
-    {
-      "date": "YYYY-MM-DD",
-      "progress": "진도 요약 내용 (1줄)",
-      "homework": "숙제 요약 내용 (1줄)"
-    }
-  ]
+Format:
+{"data": [{"date":"YYYY-MM-DD","progress":"...","homework":"..."}]}
 
-  수업 기록:`
-  ,
-COUNSEL_ANALYSIS: `다음 상담 내용을 요약해줘.
+Logs:`,
+  /*
+  [해석: 다음 수업 기록을 한국어로 된 JSON 객체로 요약해 줘.
+  규칙:
+  1. 각 수업별로 "progress(진도)"와 "homework(숙제)"를 추출할 것. 각각 최대 1줄.
+  2. 간결하게 작성하고 핵심 수학 용어는 유지할 것.
+  3. 시간 순서대로 정렬할 것.
+  4. 오직 다음 구조와 일치하는 유효한 JSON 형식으로만 출력할 것: 
+  {"data": [{"date":"YYYY-MM-DD","progress":"...","homework":"..."}]}
+  
+  수업 기록:]
+  */
 
-    [작성 조건]
-  1. 반드시 "진도/상황", "조치/요청" 두 항목으로 구분할 것
-  2. 각 항목은 한 줄씩만 작성 (총 2줄)
-  3. 불필요한 배경 설명, 반복 표현 제거하고 핵심만 요약
-  4. 문장은 명사형 또는 간결한 평서형으로 작성 (길게 늘어지지 않게)
-  5. 학습 개념, 문제 유형, 원인, 조치 내용 등 핵심 키워드는 유지
-  6. 추측하거나 없는 내용 추가하지 말 것
+  COUNSEL_ANALYSIS: `Summarize the counseling logs into a JSON object in Korean.
+Rules:
+1. Divide into "progress" (Progress/Status) and "action" (Action/Request).
+2. Max 1 line per section using concise, noun-ending phrases. No filler words.
+3. Retain core keywords. Do not guess or add unmentioned details.
+4. Output only JSON
 
-  [출력 형식]
-  진도/상황: ...
-  조치/요청: ...`
-  ,
-  COUNSEL_MESSAGE: "다음 상담 내용을 바탕으로 학부모님(또는 학생)에게 전송할 정중하고 친절한 안내 문자 메시지 초안을 작성해 주세요:\n\n",
+Format:
+{"progress": "...", "action": "..."}
+
+Logs:`,
+  /*
+  [해석: 다음 상담 기록을 한국어로 된 JSON 객체로 요약해 줘.
+  규칙:
+  1. "progress(진도/상황)"와 "action(조치/요청)"으로 나눌 것.
+  2. 각 섹션은 최대 1줄로, 명사형이나 간결한 문장으로 작성할 것. 불필요한 수식어 금지.
+  3. 핵심 키워드를 유지할 것. 추측하거나 언급되지 않은 세부 사항을 추가하지 말 것.
+  4. 오직 다음 구조와 일치하는 유효한 JSON 형식으로만 출력할 것:
+  {"progress": "...", "action": "..."}
+  
+  상담 기록:]
+  */
+
+  COUNSEL_MESSAGE: `Draft a polite, professional, and friendly text message to a parent (or student) based on the counseling logs.
+Rules:
+1. Write entirely in Korean.
+2. Maintain a warm and trustworthy tone.
+3. Output only JSON
+
+Format:
+{"message": "..."}
+
+Logs:\n`,
+  /*
+  [해석: 상담 기록을 바탕으로 학부모(또는 학생)에게 보낼 정중하고 전문적이며 친절한 문자 메시지 초안을 작성해 줘.
+  규칙:
+  1. 완전히 한국어로 작성할 것.
+  2. 따뜻하고 신뢰감 있는 어조를 유지할 것.
+  3. 오직 다음 구조와 일치하는 유효한 JSON 형식으로만 출력할 것:
+  {"message": "..."}
+  
+  상담 기록:]
+  */
 };
 
 const openai = new OpenAI({
@@ -42,7 +74,7 @@ const openai = new OpenAI({
 });
 
 export const openaiService = {
-  async generateResponse(systemPrompt: string, userContent: string) {
+  async generateResponse(systemPrompt: string, userContent: string, maxTokens: number = 500) {
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -50,8 +82,14 @@ export const openaiService = {
           { role: "system", content: systemPrompt },
           { role: "user", content: userContent },
         ],
+        response_format: { type: "json_object" },
+        max_tokens: maxTokens, 
       });
-      return response.choices[0].message.content;
+      
+      const content = response.choices[0].message.content;
+      if (!content) throw new Error("AI 응답이 비어있습니다.");
+      
+      return JSON.parse(content);
     } catch (error) {
       console.error("OpenAI API 호출 에러:", error);
       throw new Error("AI 응답을 생성하는 중에 오류가 발생했습니다.");
@@ -59,14 +97,17 @@ export const openaiService = {
   },
 
   async getWeeklyClassSummary(reportsData: string) {
-    return this.generateResponse(AI_PROMPTS.CLASS_SUMMARY, reportsData);
+    // 반환값: { data: [ { date: string, progress: string, homework: string } ] }
+    return this.generateResponse(AI_PROMPTS.CLASS_SUMMARY, reportsData, 700); 
   },
 
   async getCounselAnalysis(counselText: string) {
-    return this.generateResponse(AI_PROMPTS.COUNSEL_ANALYSIS, counselText);
+    // 반환값: { progress: string, action: string }
+    return this.generateResponse(AI_PROMPTS.COUNSEL_ANALYSIS, counselText, 300);
   },
 
   async generateCounselMessage(counselText: string) {
-    return this.generateResponse(AI_PROMPTS.COUNSEL_MESSAGE, counselText);
+    // 반환값: { message: string }
+    return this.generateResponse(AI_PROMPTS.COUNSEL_MESSAGE, counselText, 500);
   },
 };
