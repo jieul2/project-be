@@ -4,17 +4,19 @@ import { Schema, model, InferSchemaType } from "mongoose";
 const userSchema = new Schema(
   {
     username: { type: String, required: true },
-    role: { 
-      type: String, 
+    role: {
+      type: String,
       enum: ["instructor", "admin", "user"],
-      default: "user" 
+      default: "user",
     },
     status: { type: String, enum: ["active", "inactive"], default: "active" },
     phone: { type: String },
+    birthDate: { type: Date },
+    gender: { type: String, enum: ["male", "female"] },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // 2. 타입 추출
