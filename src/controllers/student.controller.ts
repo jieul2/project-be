@@ -11,17 +11,36 @@ const studentController: StudentController = {} as StudentController;
 // 학생 목록 조회
 studentController.getStudents = async (c: Context) => {
   try {
-    const searchName = c.req.query("name");
-    
-    // 기본 조건: 학생 롤을 가진 사용자
+    const { name: searchName, page = 1, limit = 10 } = c.req.query();
+
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
     const query: StudentSearchQuery = { role: "user" };
-    
+
     if (searchName) {
       query.username = { $regex: searchName, $options: "i" };
     }
 
-    const students = await User.find(query).select("-password");
-    return c.json({ students });
+    // 1. 데이터 조회와 전체 개수 계산을 동시에 수행
+    const [students, total] = await Promise.all([
+      User.find(query).skip(skip).limit(limitNumber).select("-password").sort({ createdAt: -1 }),
+      User.countDocuments(query),
+    ]);
+
+    // 2. 전체 페이지 수 계산
+    const totalPages = Math.ceil(total / limitNumber);
+
+    return c.json({
+      students,
+      pagination: {
+        page: pageNumber,
+        limit: limitNumber,
+        total,
+        totalPages,
+      },
+    });
   } catch (err) {
     if (err instanceof Error) {
       return c.json({ message: "학생 목록 조회 실패", error: err.message }, 500);
@@ -34,7 +53,7 @@ studentController.getStudents = async (c: Context) => {
 studentController.getStudentById = async (c: Context) => {
   try {
     const { studentId } = c.req.param();
-    
+
     const student = await User.findOne({ _id: studentId, role: "user" }).select("-password");
 
     if (!student) {
@@ -49,14 +68,14 @@ studentController.getStudentById = async (c: Context) => {
         .populate("subjectId", "title")
         .populate("instructorId", "username email"),
       // 상담 이력 조회
-      Counsel.find({ studentId }).sort({ start: -1 })
+      Counsel.find({ studentId }).sort({ start: -1 }),
     ]);
 
-    return c.json({ 
+    return c.json({
       student,
       achievements,
       classes,
-      counsels
+      counsels,
     });
   } catch (err) {
     if (err instanceof Error) {

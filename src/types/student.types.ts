@@ -10,4 +10,6 @@ export interface StudentController {
 export interface StudentSearchQuery {
   role: string;
   username?: { $regex: string; $options: string };
+  skip?: number;
+  limit?: number;
 }
