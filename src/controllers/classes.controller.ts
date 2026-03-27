@@ -6,6 +6,7 @@ import Subject from "../models/Subject";
 import Classroom from "../models/Classroom";
 import Attendance from "../models/Attendance";
 import ClassReports from "../models/ClassReports";
+import { openaiService } from "../services/openai.service";
 
 const classesController: ClassesController = {} as ClassesController;
 
@@ -273,6 +274,52 @@ classesController.getClassReport = async (c: Context) => {
       return c.json({ message: "수업 보고서 조회 실패", error: err.message }, 400);
     }
     return c.json({ message: "수업 보고서 조회 실패", error: "알 수 없는 오류" }, 400);
+  }
+};
+
+classesController.getWeeklyAiSummary = async (c: Context) => {
+  try {
+    const { classId } = c.req.param();
+    
+    // 최근 7일간의 수업 일지 조회
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    // date: 1 옵션으로 인해 이미 시간 순서대로 정렬되어 조회됩니다.
+    const recentReports = await ClassReports.find({
+      classId,
+      date: { $gte: oneWeekAgo }
+    }).sort({ date: 1 });
+
+    if (!recentReports || recentReports.length === 0) {
+      return c.json({ message: "최근 1주일간의 수업 일지가 없습니다." }, 404);
+    }
+
+    const reportTexts = recentReports.map(r => `[${r.date.toISOString().split('T')[0]}] 진도: ${r.progress}, 숙제: ${r.homework}`).join("\n");
+    
+    // AI 응답 (문자열 형태의 JSON 배열)
+    const aiResponseText = await openaiService.getWeeklyClassSummary(reportTexts);
+
+    let summaryData;
+    try {
+      // AI가 마크다운 코드 블록(```json)을 포함해서 응답할 경우를 대비해 텍스트 정제
+      const cleanedResponse = aiResponseText?.replace(/```json/g, "").replace(/```/g, "").trim() || "[]";
+      summaryData = JSON.parse(cleanedResponse);
+    } catch (parseError) {
+      console.error("JSON 파싱 에러:", parseError);
+      // 파싱 실패 시 원본 텍스트를 그대로 반환하는 Fallback (배열 형태로 유지)
+      summaryData = [
+        { 
+          date: "N/A", 
+          progress: "요약 파싱 실패", 
+          homework: aiResponseText 
+        }
+      ];
+    }
+
+    return c.json({ message: "AI 주간 수업 요약 완료", summary: summaryData }, 200);
+  } catch (err) {
+    return c.json({ message: "AI 수업 요약 실패", error: err instanceof Error ? err.message : "알 수 없는 오류" }, 500);
   }
 };
 

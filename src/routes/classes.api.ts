@@ -21,5 +21,7 @@ router.post("/:classId/attendance", authMiddleware, classesController.checkAtten
 router.get("/:classId/report", authMiddleware, classesController.getClassReport);
 // 수업 보고서 생성
 router.post("/:classId/report", authMiddleware, classesController.createClassReport);
+// AI 주간 요약 조회
+router.get("/:classId/report/ai-summary", authMiddleware, classesController.getWeeklyAiSummary);
 
 export default router;

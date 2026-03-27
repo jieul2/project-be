@@ -10,6 +10,7 @@ export interface ClassesController {
   getClassReport: (c: Context) => Promise<Response>;
   checkAttendance: (c: Context) => Promise<Response>;
   createClassReport: (c: Context) => Promise<Response>;
+  getWeeklyAiSummary: (c: Context) => Promise<Response>;
 }
 
 export interface AttendanceRecordPayload {
