@@ -1,4 +1,5 @@
 import Payment from "../models/Payment";
+import User from "../models/User";
 import { Context } from "hono";
 import { PaymentsController } from "../types/payments.types";
 
@@ -40,19 +41,28 @@ paymentsController.createPayment = async (c: Context) => {
 
 paymentsController.getPayments = async (c: Context) => {
   try {
-    const { page = 1, limit = 10 } = c.req.query();
+    const { page = 1, limit = 10, name } = c.req.query();
 
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
 
+    const paymentFilter: Record<string, unknown> = {};
+    if (name) {
+      const matchingStudents = await User.find(
+        { username: { $regex: name, $options: "i" }, role: "user" },
+        "_id",
+      );
+      paymentFilter.studentId = { $in: matchingStudents.map((s) => s._id) };
+    }
+
     const [payments, total] = await Promise.all([
-      Payment.find()
+      Payment.find(paymentFilter)
         .populate<{ studentId: PopulatedPaymentUser }>("studentId", "username")
         .skip(skip)
         .limit(limitNumber)
         .sort({ createdAt: -1 }),
-      Payment.countDocuments(),
+      Payment.countDocuments(paymentFilter),
     ]);
 
     const paymentItems: PaymentResponseItem[] = payments.map((payment) => ({
