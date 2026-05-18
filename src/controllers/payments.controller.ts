@@ -137,11 +137,28 @@ paymentsController.getPaymentDetail = async (c: Context) => {
     if (!paymentId) {
       throw new Error("결제 ID가 필요합니다.");
     }
-    const payment = await Payment.findById(paymentId);
+
+    const payment = await Payment.findById(paymentId).populate<{ studentId: PopulatedPaymentUser }>(
+      "studentId",
+      "username",
+    );
     if (!payment) {
       throw new Error("결제 정보를 찾을 수 없습니다.");
     }
-    return c.json({ payment }, 200);
+
+    const paymentItem: PaymentResponseItem = {
+      _id: String(payment._id),
+      studentId: String(payment.studentId?._id ?? payment.studentId),
+      amount: payment.amount,
+      status: payment.status,
+      user: {
+        username: payment.studentId?.username ?? "",
+      },
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+    };
+
+    return c.json({ payment: paymentItem }, 200);
   } catch (err) {
     if (err instanceof Error) {
       return c.json({ message: "결제 상세 조회 실패", error: err.message }, 400);
