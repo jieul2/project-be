@@ -1,15 +1,29 @@
 import Payment from "../models/Payment";
+import User from "../models/User";
 import { Context } from "hono";
 import { PaymentsController } from "../types/payments.types";
+
+interface PopulatedPaymentUser {
+  _id: string;
+  username: string;
+}
+
+interface PaymentResponseItem {
+  _id: string;
+  studentId: string;
+  amount: number;
+  status: string;
+  user: {
+    username: string;
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 const paymentsController: PaymentsController = {} as PaymentsController;
 
 paymentsController.createPayment = async (c: Context) => {
   try {
-    const user = c.get("user");
-    if (!user.role || (user.role !== "admin" && user.role !== "instructor")) {
-      throw new Error("권한이 없습니다.");
-    }
     const { studentId, amount } = await c.req.json();
     if (!amount || !studentId) {
       throw new Error("필수 필드가 누락되었습니다.");
@@ -27,15 +41,53 @@ paymentsController.createPayment = async (c: Context) => {
 
 paymentsController.getPayments = async (c: Context) => {
   try {
-    const user = c.get("user");
-    if (!user.role || (user.role !== "admin" && user.role !== "instructor")) {
-      throw new Error("권한이 없습니다.");
+    const { page = 1, limit = 10, name } = c.req.query();
+
+    const pageNumber = Number(page);
+    const limitNumber = Number(limit);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const paymentFilter: Record<string, unknown> = {};
+    if (name) {
+      const matchingStudents = await User.find(
+        { username: { $regex: name, $options: "i" }, role: "user" },
+        "_id",
+      );
+      paymentFilter.studentId = { $in: matchingStudents.map((s) => s._id) };
     }
-    const payments = await Payment.find();
-    if (!payments) {
-      throw new Error("결제 정보를 찾을 수 없습니다.");
-    }
-    return c.json({ payments }, 200);
+
+    const [payments, total] = await Promise.all([
+      Payment.find(paymentFilter)
+        .populate<{ studentId: PopulatedPaymentUser }>("studentId", "username")
+        .skip(skip)
+        .limit(limitNumber)
+        .sort({ createdAt: -1 }),
+      Payment.countDocuments(paymentFilter),
+    ]);
+
+    const paymentItems: PaymentResponseItem[] = payments.map((payment) => ({
+      _id: String(payment._id),
+      studentId: String(payment.studentId?._id ?? payment.studentId),
+      amount: payment.amount,
+      status: payment.status,
+      user: {
+        username: payment.studentId?.username ?? "",
+      },
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+    }));
+
+    const totalPages = Math.ceil(total / limitNumber);
+
+    return c.json({
+      payments: paymentItems,
+      pagination: {
+        page: pageNumber,
+        limit: limitNumber,
+        total,
+        totalPages,
+      },
+    });
   } catch (err) {
     if (err instanceof Error) {
       return c.json({ message: "결제 조회 실패", error: err.message }, 400);
@@ -46,10 +98,6 @@ paymentsController.getPayments = async (c: Context) => {
 
 paymentsController.updatePayment = async (c: Context) => {
   try {
-    const user = c.get("user");
-    if (!user.role || (user.role !== "admin" && user.role !== "instructor")) {
-      throw new Error("권한이 없습니다.");
-    }
     const { paymentId } = c.req.param();
     const { status } = await c.req.json();
 
@@ -76,10 +124,6 @@ paymentsController.updatePayment = async (c: Context) => {
 
 paymentsController.deletePayment = async (c: Context) => {
   try {
-    const user = c.get("user");
-    if (!user.role || (user.role !== "admin" && user.role !== "instructor")) {
-      throw new Error("권한이 없습니다.");
-    }
     const { paymentId } = c.req.param();
     if (!paymentId) {
       throw new Error("결제 ID가 필요합니다.");
@@ -99,19 +143,32 @@ paymentsController.deletePayment = async (c: Context) => {
 
 paymentsController.getPaymentDetail = async (c: Context) => {
   try {
-    const user = c.get("user");
-    if (!user.role || (user.role !== "admin" && user.role !== "instructor")) {
-      throw new Error("권한이 없습니다.");
-    }
     const { paymentId } = c.req.param();
     if (!paymentId) {
       throw new Error("결제 ID가 필요합니다.");
     }
-    const payment = await Payment.findById(paymentId);
+
+    const payment = await Payment.findById(paymentId).populate<{ studentId: PopulatedPaymentUser }>(
+      "studentId",
+      "username",
+    );
     if (!payment) {
       throw new Error("결제 정보를 찾을 수 없습니다.");
     }
-    return c.json({ payment }, 200);
+
+    const paymentItem: PaymentResponseItem = {
+      _id: String(payment._id),
+      studentId: String(payment.studentId?._id ?? payment.studentId),
+      amount: payment.amount,
+      status: payment.status,
+      user: {
+        username: payment.studentId?.username ?? "",
+      },
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+    };
+
+    return c.json({ payment: paymentItem }, 200);
   } catch (err) {
     if (err instanceof Error) {
       return c.json({ message: "결제 상세 조회 실패", error: err.message }, 400);
@@ -122,10 +179,6 @@ paymentsController.getPaymentDetail = async (c: Context) => {
 
 paymentsController.getUnpaidPayments = async (c: Context) => {
   try {
-    const user = c.get("user");
-    if (!user.role || (user.role !== "admin" && user.role !== "instructor")) {
-      throw new Error("권한이 없습니다.");
-    }
     const unpaidPayments = await Payment.find({ status: "pending" });
     if (!unpaidPayments) {
       throw new Error("미납 결제 정보를 찾을 수 없습니다.");

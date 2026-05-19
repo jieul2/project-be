@@ -3,6 +3,8 @@ import Achievement from "../models/Achievement";
 import Class from "../models/Class";
 import Counsel from "../models/Counsel";
 import ParentStudent from "../models/ParentStudent";
+import Payment from "../models/Payment";
+import Attendance from "../models/Attendance";
 import { Context } from "hono";
 import { StudentController, StudentSearchQuery } from "../types/student.types";
 
@@ -60,15 +62,22 @@ studentController.getStudentById = async (c: Context) => {
       return c.json({ message: "해당 학생을 찾을 수 없습니다." }, 404);
     }
 
-    const [achievements, classes, counsels] = await Promise.all([
+    const [achievements, classes, counsels, payments, attendances, parents] = await Promise.all([
       // 성적 조회 (과목 정보 포함)
-      Achievement.find({ userId: studentId }).populate("subjectId", "title"),
-      // 진도 파악용: 현재 수강 중인 수업 목록 (강사와 과목 정보 포함)
+      Achievement.find({ studentId }).populate("subjectId", "title"),
+      // 진도 파악용: 현재 수강 중인 수업 목록 (강사, 과목, 강의실 정보 포함)
       Class.find({ students: studentId })
         .populate("subjectId", "title")
-        .populate("instructorId", "username email"),
-      // 상담 이력 조회
-      Counsel.find({ studentId }).sort({ start: -1 }),
+        .populate("instructorId", "username email")
+        .populate("classroomId", "classroomName"),
+      // 상담 이력 조회 (담당 강사 정보 포함)
+      Counsel.find({ studentId }).populate("instructorId", "username").sort({ start: -1 }),
+      // 결제 내역 조회
+      Payment.find({ studentId }).sort({ createdAt: -1 }),
+      // 출석 이력 조회
+      Attendance.find({ studentId }).sort({ date: -1 }),
+      // 연결된 학부모 조회
+      ParentStudent.find({ studentId }).populate("parentId", "username email phone"),
     ]);
 
     return c.json({
@@ -76,6 +85,9 @@ studentController.getStudentById = async (c: Context) => {
       achievements,
       classes,
       counsels,
+      payments,
+      attendances,
+      parents,
     });
   } catch (err) {
     if (err instanceof Error) {
