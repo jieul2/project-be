@@ -21,11 +21,11 @@ subjectController.getSubjects = async (c: Context) => {
 
 subjectController.createSubject = async (c: Context) => {
   try {
-    const { title } = await c.req.json();
+    const { title, description } = await c.req.json();
     if (!title) {
       throw new Error("필수 필드가 누락되었습니다.");
     }
-    const newSubject = await Subject.create({ title });
+    const newSubject = await Subject.create({ title, description: description?.trim() ?? "" });
     return c.json({ message: "과목 생성 성공", subject: newSubject }, 200);
   } catch (err) {
     if (err instanceof Error) {
@@ -54,13 +54,13 @@ subjectController.deleteSubject = async (c: Context) => {
 subjectController.updateSubject = async (c: Context) => {
   try {
     const { subjectId } = c.req.param();
-    const { title } = await c.req.json();
+    const { title, description } = await c.req.json();
     if (!title) {
       throw new Error("필수 필드가 누락되었습니다.");
     }
     const updatedSubject = await Subject.findByIdAndUpdate(
       subjectId,
-      { title },
+      { title, description: description?.trim() ?? "" },
       { returnDocument: "after" },
     );
     if (!updatedSubject) {

@@ -4,6 +4,7 @@ import { Schema, model, InferSchemaType } from "mongoose";
 const classroomSchema = new Schema(
   {
     classroomName: { type: String, required: true },
+    description: { type: String, default: "" },
   },
   { timestamps: true },
 );

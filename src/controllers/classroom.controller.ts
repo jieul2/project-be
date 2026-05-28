@@ -18,11 +18,11 @@ classroomController.getClassroom = async (c: Context) => {
 
 classroomController.createClassroom = async (c: Context) => {
   try {
-    const { classroomName } = await c.req.json();
+    const { classroomName, description } = await c.req.json();
     if (!classroomName) {
       throw new Error("강의실 이름이 필요합니다.");
     }
-    const newClassroom = new Classroom({ classroomName });
+    const newClassroom = new Classroom({ classroomName, description: description?.trim() ?? "" });
     await newClassroom.save();
     return c.json({ message: "강의실이 성공적으로 생성되었습니다.", classroom: newClassroom }, 201);
   } catch (err) {
@@ -36,13 +36,13 @@ classroomController.createClassroom = async (c: Context) => {
 classroomController.updateClassroom = async (c: Context) => {
   try {
     const { classroomId } = c.req.param();
-    const { classroomName } = await c.req.json();
+    const { classroomName, description } = await c.req.json();
     if (!classroomName) {
       throw new Error("강의실 이름이 필요합니다.");
     }
     const updatedClassroom = await Classroom.findByIdAndUpdate(
       classroomId,
-      { classroomName },
+      { classroomName, description: description?.trim() ?? "" },
       { returnDocument: "after" },
     );
     if (!updatedClassroom) {

@@ -7,7 +7,23 @@ const SKIP_PATHS = ["/api/logs"];
 const recentKeys = new Map<string, number>();
 const DEDUP_MS = 800;
 
+const BODY_METHODS = ["POST", "PUT", "PATCH"];
+const SANITIZE_KEYS = ["password", "currentPassword", "newPassword", "token"];
+
 export const logMiddleware = async (c: Context, next: Next) => {
+  // Capture body before the route handler consumes the stream
+  let body: Record<string, unknown> | null = null;
+  if (BODY_METHODS.includes(c.req.method)) {
+    try {
+      const json = await c.req.json();
+      const sanitized = { ...json };
+      for (const key of SANITIZE_KEYS) delete sanitized[key];
+      if (Object.keys(sanitized).length > 0) body = sanitized;
+    } catch {
+      // Not JSON or empty body — leave body as null
+    }
+  }
+
   await next();
 
   if (c.req.method === "OPTIONS") return;
@@ -39,5 +55,6 @@ export const logMiddleware = async (c: Context, next: Next) => {
     path: c.req.path,
     statusCode: c.res.status,
     ip,
+    body,
   }).catch((err) => console.error("[Log Middleware] DB 저장 실패:", err));
 };

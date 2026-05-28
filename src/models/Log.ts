@@ -9,6 +9,7 @@ const logSchema = new Schema(
     path: { type: String, required: true },
     statusCode: { type: Number },
     ip: { type: String, default: "unknown" },
+    body: { type: Schema.Types.Mixed, default: null },
   },
   { timestamps: true },
 );

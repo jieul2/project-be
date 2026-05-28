@@ -4,6 +4,7 @@ import { Schema, model, InferSchemaType } from "mongoose";
 const subjectSchema = new Schema(
   {
     title: { type: String, required: true },
+    description: { type: String, default: "" },
   },
   { timestamps: true },
 );
