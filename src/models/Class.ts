@@ -1,6 +1,6 @@
 // src/models/Class.ts
 import { Schema, model, InferSchemaType } from "mongoose";
-import { DEFAULT_CLASS_COLOR } from "../constants/class.constants";
+import { CLASS_COLORS } from "../constants/class.constants";
 
 // 매주 반복되는 스케줄 서브 스키마
 const scheduleSchema = new Schema(
@@ -38,7 +38,7 @@ const classSchema = new Schema(
     schedules: { type: [scheduleSchema], required: true },
     
     // 달력에 동일한 시간표를 일괄로 렌더링할 때 시각적 통일성을 주는 색상 코드
-    color: { type: String, default: DEFAULT_CLASS_COLOR },
+    color: { type: String, default: CLASS_COLORS[0] },
 
     // 수강생: 강사/관리자가 직접 배정한 학생 이력
     students: { type: [studentEnrollmentSchema], default: [] },

@@ -10,7 +10,7 @@ import Attendance from "../models/Attendance";
 import ClassReports from "../models/ClassReports";
 import ParentStudent from "../models/ParentStudent";
 import { openaiService } from "../services/openai.service";
-import { DEFAULT_CLASS_COLOR } from "../constants/class.constants";
+import { CLASS_COLORS } from "../constants/class.constants";
 
 const classesController: ClassesController = {} as ClassesController;
 
@@ -68,6 +68,13 @@ if (user.role === "instructor") {
   }
 };
 
+// 특정 조건(과목 ID)에 맞춰 일관된 색을 반환하는 함수
+const getColorBySubject = (subjectId: string) => {
+  // subjectId(ObjectId) 문자열의 마지막 2자리를 16진수로 변환하여 인덱스로 활용
+  const hash = parseInt(subjectId.slice(-2), 16);
+  return CLASS_COLORS[hash % CLASS_COLORS.length];
+};
+
 classesController.createClass = async (c: Context) => {
   try {
     const user = c.get("user");
@@ -94,7 +101,7 @@ const newClass = await Class.create({
       startDate: new Date(startDate),
       endDate: endDate ? new Date(endDate) : null,
       targetDate: targetDate ? new Date(targetDate) : null, 
-      color: color || DEFAULT_CLASS_COLOR,
+      color: color || getColorBySubject(subjectId),
       schedules,
     });
 
@@ -242,6 +249,7 @@ classesController.getTimetable = async (c: Context) => {
 
 // 드래그 앤 드롭 전용: 특정 스케줄(시간표 블록) 부분 수정 API
 classesController.updateTimetable = async (c: Context) => {
+  
   try {
     const user = c.get("user");
     // 권한 체크: 강사나 관리자만 시간표 수정 가능
