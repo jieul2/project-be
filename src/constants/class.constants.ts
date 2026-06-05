@@ -1,0 +1,1 @@
+export const DEFAULT_CLASS_COLOR = "#3788d8";
