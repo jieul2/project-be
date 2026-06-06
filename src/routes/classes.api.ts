@@ -14,7 +14,7 @@ router.patch("/:classId/schedules/:scheduleId", authMiddleware, classesControlle
 // 수업 상세 조회
 router.get("/:classId", authMiddleware, classesController.getDetailClass);
 // 수업 업데이트
-router.put("/:classId", authMiddleware, classesController.updateClass);
+router.patch("/:classId", authMiddleware, classesController.updateClass);
 // 수업 삭제
 router.delete("/:classId", authMiddleware, classesController.deleteClass);
 // 출석 조회

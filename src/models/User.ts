@@ -1,6 +1,5 @@
 import { Schema, model, InferSchemaType } from "mongoose";
 
-// 1. 스키마 정의
 const userSchema = new Schema(
   {
     username: { type: String, required: true },
@@ -19,10 +18,8 @@ const userSchema = new Schema(
   { timestamps: true },
 );
 
-// 2. 타입 추출
 export type IUser = InferSchemaType<typeof userSchema>;
 
-// 3. 모델 생성
 const User = model<IUser>("User", userSchema);
 
 export default User;

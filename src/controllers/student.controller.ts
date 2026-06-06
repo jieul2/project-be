@@ -1,4 +1,4 @@
-import User from "../models/User";
+import User, { IUser } from "../models/User";
 import Achievement from "../models/Achievement";
 import Class from "../models/Class";
 import Counsel from "../models/Counsel";
@@ -7,6 +7,7 @@ import Payment from "../models/Payment";
 import Attendance from "../models/Attendance";
 import { Context } from "hono";
 import { StudentController, StudentSearchQuery } from "../types/student.types";
+import mongoose from "mongoose"; // FilterQuery를 직접 가져옵니다.
 
 const studentController: StudentController = {} as StudentController;
 
@@ -94,6 +95,30 @@ studentController.getStudentById = async (c: Context) => {
       return c.json({ message: "학생 상세 조회 실패", error: err.message }, 500);
     }
     return c.json({ message: "학생 상세 조회 실패", error: "알 수 없는 오류" }, 500);
+  }
+};
+
+// 수업 배정용: 페이징 없이 이름으로만 간소하게 학생 목록 조회
+studentController.searchStudentsSimple = async (c: Context) => {
+  try {
+    const { name } = c.req.query();
+    
+    // role이 user인 학생만 검색
+    const query: StudentSearchQuery = { role: "user" };
+
+    if (name) {
+      query.username = { $regex: name, $options: "i" };
+    }
+
+    // 이름과 ID만 선택하여 가볍게 조회
+    const students = await User.find(query)
+      .select("username email")
+      .sort({ username: 1 })
+      .limit(20); // 너무 많은 데이터 방지
+
+    return c.json({ students }, 200);
+  } catch (err) {
+    return c.json({ message: "학생 검색 실패", error: "알 수 없는 오류" }, 500);
   }
 };
 
