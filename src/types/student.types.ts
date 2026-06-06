@@ -3,6 +3,7 @@ import { Context } from "hono";
 export interface StudentController {
   getStudents: (c: Context) => Promise<Response>;
   getStudentById: (c: Context) => Promise<Response>;
+  searchStudentsSimple: (c: Context) => Promise<Response>;
   linkParentAndStudent: (c: Context) => Promise<Response>;
   getMappingByStudentId: (c: Context) => Promise<Response>;
 }

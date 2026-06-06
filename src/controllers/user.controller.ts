@@ -79,6 +79,17 @@ const getPasswordUser = await User.findById(user.id);
         return c.json({ message: "사용자 조회 실패", error: "알 수 없는 오류" }, 400);
     }
 }
-
+userController.getInstructors = async (c: Context) => {
+  try {
+    // role이 "instructor"인 사용자만 찾아서 _id와 username만 반환 (보안 및 최적화)
+    const instructors = await User.find({ role: "instructor" }).select("_id username");
+    return c.json({ instructors }, 200);
+  } catch (err) {
+    if (err instanceof Error) {
+      return c.json({ message: "강사 목록 조회 실패", error: err.message }, 400);
+    }
+    return c.json({ message: "강사 목록 조회 실패", error: "알 수 없는 오류" }, 400);
+  }
+};
 
 export default userController;

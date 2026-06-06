@@ -1,12 +1,16 @@
-import { ClassesController, AttendanceRecordPayload } from "../types/classes.types";
+import { ClassesController, AttendanceRecordPayload, ClassQueryFilter } from "../types/classes.types";
 import { Context } from "hono";
-import Class from "../models/Class";
+
+import mongoose from "mongoose";
+import Class, { IClass } from "../models/Class";
 import User from "../models/User";
 import Subject from "../models/Subject";
 import Classroom from "../models/Classroom";
 import Attendance from "../models/Attendance";
 import ClassReports from "../models/ClassReports";
+import ParentStudent from "../models/ParentStudent";
 import { openaiService } from "../services/openai.service";
+import { CLASS_COLORS } from "../constants/class.constants";
 
 const classesController: ClassesController = {} as ClassesController;
 
@@ -16,25 +20,45 @@ classesController.getClasses = async (c: Context) => {
     if (!user) {
       throw new Error("사용자 ID가 필요합니다.");
     }
-    const classes = await Class.find()
+
+    let queryFilter = {};
+
+if (user.role === "instructor") {
+      queryFilter = { instructorId: user.id };
+    } else if (user.role === "student") {
+      queryFilter = { "students.studentId": user.id };
+    } else if (user.role === "parent") {
+      // 학부모인 경우 자녀 ID를 찾아 자녀가 속한 수업 모두 조회
+      const relations = await ParentStudent.find({ parentId: user.id });
+      const childIds = relations.map(rel => rel.studentId);
+      queryFilter = { "students.studentId": { $in: childIds } };
+    } else if (user.role === "admin") {
+      queryFilter = {};
+    } else {
+      return c.json({ classes: [] }, 200);
+    }
+
+    const classes = await Class.find(queryFilter)
       .populate({
         path: "instructorId",
         model: User,
-        select: "-_id",
+        select: "-password",
       })
       .populate({
         path: "subjectId",
         model: Subject,
-        select: "title -_id",
+        select: "title",
       })
       .populate({
         path: "classroomId",
         model: Classroom,
-        select: "classroomName -_id",
+        select: "classroomName",
       });
+
     if (!classes) {
       throw new Error("수업을 찾을 수 없습니다.");
     }
+    
     return c.json({ classes }, 200);
   } catch (err) {
     if (err instanceof Error) {
@@ -42,6 +66,13 @@ classesController.getClasses = async (c: Context) => {
     }
     return c.json({ message: "수업 조회 실패", error: "알 수 없는 오류" }, 400);
   }
+};
+
+// 특정 조건(과목 ID)에 맞춰 일관된 색을 반환하는 함수
+const getColorBySubject = (subjectId: string) => {
+  // subjectId(ObjectId) 문자열의 마지막 2자리를 16진수로 변환하여 인덱스로 활용
+  const hash = parseInt(subjectId.slice(-2), 16);
+  return CLASS_COLORS[hash % CLASS_COLORS.length];
 };
 
 classesController.createClass = async (c: Context) => {
@@ -53,24 +84,31 @@ classesController.createClass = async (c: Context) => {
     if (user.role !== "instructor" && user.role !== "admin") {
       throw new Error("인증되지 않은 사용자입니다.");
     }
-    // 프론트에서 강사, 과목, 강의실 ID를 모르기때문에 이름으로 받아서 DB에서 ID로 변환하는 로직이 필요함
 
-    const { instructorId, subjectId, classroomId, startTime, endTime } = await c.req.json();
-    if (!instructorId || !subjectId || !classroomId || !startTime || !endTime) {
-      throw new Error("필수 필드가 누락되었습니다.");
+    const { 
+        instructorId, subjectId, classroomId, 
+        startDate, endDate, targetDate, color, schedules 
+      } = await c.req.json();
+    
+    if (!instructorId || !subjectId || !classroomId || !startDate || !schedules || !Array.isArray(schedules) || schedules.length === 0) {
+      throw new Error("필수 필드(강사, 과목, 강의실, 시작일, 스케줄)가 누락되었습니다.");
     }
 
-    const newClass = await Class.create({
-      startTime,
-      endTime,
+const newClass = await Class.create({
       instructorId,
       subjectId,
       classroomId,
+      startDate: new Date(startDate),
+      endDate: endDate ? new Date(endDate) : null,
+      targetDate: targetDate ? new Date(targetDate) : null, 
+      color: color || getColorBySubject(subjectId),
+      schedules,
     });
+
     if (!newClass) {
       throw new Error("수업을 생성할 수 없습니다.");
     }
-    return c.json({ message: "수업 생성 성공", class: newClass }, 200);
+    return c.json({ message: "수업 생성 성공", class: newClass }, 201);
   } catch (err) {
     if (err instanceof Error) {
       return c.json({ message: "수업 생성 실패", error: err.message }, 400);
@@ -86,10 +124,14 @@ classesController.getDetailClass = async (c: Context) => {
       throw new Error("사용자 ID가 필요합니다.");
     }
     const { classId } = c.req.param();
+    
+    // 필요하다면 학생들 정보(students.studentId)도 populate 할 수 있도록 추가 설정 가능
     const classDetail = await Class.findById(classId)
       .populate("instructorId", "username -_id")
       .populate("subjectId", "title -_id")
-      .populate("classroomId", "classroomName -_id");
+      .populate("classroomId", "classroomName -_id")
+      .populate("students.studentId", "username"); // 학생 이름 조회를 위해 추가
+
     if (!classDetail) {
       throw new Error("수업을 찾을 수 없습니다.");
     }
@@ -101,6 +143,7 @@ classesController.getDetailClass = async (c: Context) => {
     return c.json({ message: "수업 상세 조회 실패", error: "알 수 없는 오류" }, 400);
   }
 };
+
 classesController.updateClass = async (c: Context) => {
   try {
     const user = c.get("user");
@@ -112,13 +155,30 @@ classesController.updateClass = async (c: Context) => {
     }
 
     const { classId } = c.req.param();
-    const { startTime, endTime, instructorId, subjectId, classroomId } = await c.req.json();
+    
+    const { 
+      instructorId, subjectId, classroomId, startDate, endDate, 
+      targetDate, color, schedules, students, status 
+    } = await c.req.json();
+
+    const updateData: mongoose.UpdateQuery<IClass> = {};
+    if (instructorId) updateData.instructorId = instructorId;
+    if (subjectId) updateData.subjectId = subjectId;
+    if (classroomId) updateData.classroomId = classroomId;
+    if (startDate) updateData.startDate = new Date(startDate);
+    if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
+    if (targetDate !== undefined) updateData.targetDate = targetDate ? new Date(targetDate) : null;
+    if (color !== undefined) updateData.color = color;
+    if (schedules) updateData.schedules = schedules;
+    if (students) updateData.students = students; // 학생 수강 배정 수정 시 사용
+    if (status) updateData.status = status;
 
     const updatedClass = await Class.findByIdAndUpdate(
       classId,
-      { startTime, endTime, instructorId, subjectId, classroomId },
-      { returnDocument: "after" },
+      updateData,
+      { returnDocument: "after", runValidators: true },
     );
+
     if (!updatedClass) {
       throw new Error("수업을 찾을 수 없습니다.");
     }
@@ -156,11 +216,88 @@ classesController.deleteClass = async (c: Context) => {
   }
 };
 
+classesController.getTimetable = async (c: Context) => {
+  try {
+    const user = c.get("user");
+    if (!user) throw new Error("사용자 ID가 필요합니다.");
+
+    const queryFilter: ClassQueryFilter = { status: "active" };
+
+    if (user.role === "instructor") {
+      queryFilter.instructorId = user.id;
+    } else if (user.role === "student") {
+      queryFilter["students.studentId"] = user.id;
+    } else if (user.role === "parent") {
+      const relations = await ParentStudent.find({ parentId: user.id });
+      const childIds = relations.map(rel => rel.studentId);
+      queryFilter["students.studentId"] = { $in: childIds };
+    } else if (user.role !== "admin") {
+      return c.json({ timetable: [] }, 200);
+    }
+
+    const classes = await Class.find(queryFilter)
+      .populate({ path: "instructorId", model: User, select: "username" })
+      .populate({ path: "subjectId", model: Subject, select: "title color" })
+      .populate({ path: "classroomId", model: Classroom, select: "classroomName" });
+
+    return c.json({ classes }, 200);
+  } catch (err) {
+    if (err instanceof Error) return c.json({ message: "시간표 조회 실패", error: err.message }, 400);
+    return c.json({ message: "시간표 조회 실패", error: "알 수 없는 오류" }, 400);
+  }
+};
+
+// 드래그 앤 드롭 전용: 특정 스케줄(시간표 블록) 부분 수정 API
+classesController.updateTimetable = async (c: Context) => {
+  
+  try {
+    const user = c.get("user");
+    // 권한 체크: 강사나 관리자만 시간표 수정 가능
+    if (!user || (user.role !== "instructor" && user.role !== "admin")) {
+      return c.json({ message: "권한이 없습니다. 강사나 관리자만 수정할 수 있습니다." }, 403);
+    }
+
+    const { classId, scheduleId } = c.req.param();
+    const { dayOfWeek, startTime, endTime } = await c.req.json();
+
+    // 필수 파라미터 검증
+    if (dayOfWeek === undefined || !startTime || !endTime) {
+      throw new Error("변경할 요일(dayOfWeek), 시작 시간(startTime), 종료 시간(endTime) 데이터가 필요합니다.");
+    }
+
+    // Mongoose 위치 연산자($)를 활용하여 일치하는 배열 내 특정 항목만 업데이트
+    const updatedClass = await Class.findOneAndUpdate(
+      { 
+        _id: classId, 
+        "schedules._id": scheduleId // 배열 내부의 특정 스케줄 ID 타겟팅
+      },
+      { 
+        $set: { 
+          "schedules.$.dayOfWeek": dayOfWeek,
+          "schedules.$.startTime": startTime,
+          "schedules.$.endTime": endTime
+        } 
+      },
+      { new: true, runValidators: true } // 업데이트 후의 데이터 반환 및 스키마 검증 활성화
+    );
+
+    if (!updatedClass) {
+      throw new Error("수업 또는 해당 스케줄을 찾을 수 없습니다.");
+    }
+
+    return c.json({ message: "스케줄 시간이 성공적으로 변경되었습니다.", class: updatedClass }, 200);
+  } catch (err) {
+    if (err instanceof Error) {
+      return c.json({ message: "스케줄 변경 실패", error: err.message }, 400);
+    }
+    return c.json({ message: "스케줄 변경 실패", error: "알 수 없는 오류" }, 400);
+  }
+};
+
 classesController.checkAttendance = async (c: Context) => {
   try {
     const user = c.get("user");
 
-    // 권한 검사: 강사(instructor)나 관리자(admin)가 아니면 접근 차단
     if (!user || (user.role !== "instructor" && user.role !== "admin")) {
       return c.json(
         { message: "권한이 없습니다. 강사나 관리자만 출석 처리를 할 수 있습니다." },
@@ -200,7 +337,9 @@ classesController.getAttendance = async (c: Context) => {
       throw new Error("사용자 ID가 필요합니다.");
     }
     const { classId } = c.req.param();
-    const classInfo = await Class.findById(classId).populate("students");
+    
+    // 학생 모델 populate 적용
+    const classInfo = await Class.findById(classId).populate("students.studentId", "username");
     if (!classInfo) {
       throw new Error("수업을 찾을 수 없습니다.");
     }
@@ -217,7 +356,6 @@ classesController.createClassReport = async (c: Context) => {
   try {
     const user = c.get("user");
 
-    // 권한 검사: 강사(instructor)나 관리자(admin)가 아니면 접근 차단
     if (!user || (user.role !== "instructor" && user.role !== "admin")) {
       return c.json({ message: "권한이 없습니다. 강사나 관리자만 접근할 수 있습니다." }, 403);
     }
@@ -228,7 +366,6 @@ classesController.createClassReport = async (c: Context) => {
       throw new Error("수업 ID, 날짜, 진도(progress) 항목은 필수입니다.");
     }
 
-    // 수업일지 생성
     const report = await ClassReports.create({
       classId,
       date: new Date(date),
@@ -244,6 +381,7 @@ classesController.createClassReport = async (c: Context) => {
     return c.json({ message: "수업일지 작성 실패", error: "알 수 없는 오류" }, 500);
   }
 };
+
 classesController.getClassReport = async (c: Context) => {
   try {
     const user = c.get("user");
@@ -251,22 +389,27 @@ classesController.getClassReport = async (c: Context) => {
       throw new Error("사용자 ID가 필요합니다.");
     }
     const { classId } = c.req.param();
+    
     const classInfo = await Class.findById(classId)
-      .populate("students")
+      .populate("students.studentId", "username") // 스키마 변경점 적용
       .populate("instructorId")
       .populate("subjectId")
       .populate("classroomId");
+      
     if (!classInfo) {
       throw new Error("수업을 찾을 수 없습니다.");
     }
+    
+    // 🚨 수정된 부분: 반환 객체에 startDate, endDate, schedules 매핑
     const report = {
       classId: classInfo._id,
       subject: classInfo.subjectId,
       instructor: classInfo.instructorId,
       classroom: classInfo.classroomId,
       students: classInfo.students,
-      startTime: classInfo.startTime,
-      endTime: classInfo.endTime,
+      startDate: classInfo.startDate,
+      endDate: classInfo.endDate,
+      schedules: classInfo.schedules,
     };
     return c.json({ report }, 200);
   } catch (err) {
@@ -281,11 +424,9 @@ classesController.getWeeklyAiSummary = async (c: Context) => {
   try {
     const { classId } = c.req.param();
     
-    // 최근 7일간의 수업 일지 조회
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
-    // date: 1 옵션으로 인해 이미 시간 순서대로 정렬되어 조회됩니다.
     const recentReports = await ClassReports.find({
       classId,
       date: { $gte: oneWeekAgo }
@@ -297,17 +438,14 @@ classesController.getWeeklyAiSummary = async (c: Context) => {
 
     const reportTexts = recentReports.map(r => `[${r.date.toISOString().split('T')[0]}] 진도: ${r.progress}, 숙제: ${r.homework}`).join("\n");
     
-    // AI 응답 (문자열 형태의 JSON 배열)
     const aiResponseText = await openaiService.getWeeklyClassSummary(reportTexts);
 
     let summaryData;
     try {
-      // AI가 마크다운 코드 블록(```json)을 포함해서 응답할 경우를 대비해 텍스트 정제
       const cleanedResponse = aiResponseText?.replace(/```json/g, "").replace(/```/g, "").trim() || "[]";
       summaryData = JSON.parse(cleanedResponse);
     } catch (parseError) {
       console.error("JSON 파싱 에러:", parseError);
-      // 파싱 실패 시 원본 텍스트를 그대로 반환하는 Fallback (배열 형태로 유지)
       summaryData = [
         { 
           date: "N/A", 

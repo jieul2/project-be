@@ -6,6 +6,7 @@ import { authMiddleware } from "../middlewares/auth.middleware";
 const router = new Hono();
 
 router.get("/", studentController.getStudents);
+router.get("/search", authMiddleware, studentController.searchStudentsSimple);
 router.get("/:studentId", authMiddleware, studentController.getStudentById);
 router.get("/:studentId/counsels", authMiddleware, counselController.getCounselHistory);
 router.post("/link", authMiddleware, studentController.linkParentAndStudent);
