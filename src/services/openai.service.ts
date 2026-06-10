@@ -57,6 +57,21 @@ Format:
 {"message": "..."}
 
 Logs:\n`,
+
+  COUNSEL_PREP: `You are a Korean tutoring center counseling assistant.
+Based on the student data below, generate counseling preparation notes in Korean.
+Rules:
+1. Analyze scores, attendance patterns, and previous counseling notes to find key issues.
+2. Identify 2-4 specific talking points that the counselor should address.
+3. Each topic must have a category (성적, 출석, 상담이력, 기타), a short issue description, and an actionable suggestion.
+4. Write a brief overall summary of the student's situation.
+5. Set priority: "high" if there are serious concerns (multiple absences, failing scores, unresolved issues), "medium" for moderate concerns, "low" for general check-in.
+6. Output only valid JSON — no markdown, no extra keys.
+
+Format:
+{"summary":"...","topics":[{"category":"성적|출석|상담이력|기타","issue":"...","suggestion":"..."}],"priority":"high|medium|low"}
+
+Student Data:`,
   /*
   [해석: 상담 기록을 바탕으로 학부모(또는 학생)에게 보낼 정중하고 전문적이며 친절한 문자 메시지 초안을 작성해 줘.
   규칙:
@@ -109,5 +124,11 @@ export const openaiService = {
   async generateCounselMessage(counselText: string) {
     // 반환값: { message: string }
     return this.generateResponse(AI_PROMPTS.COUNSEL_MESSAGE, counselText, 500);
+  },
+
+  async getCounselPrep(studentData: string) {
+    // 반환값: { summary: string, topics: [{category, issue, suggestion}], priority: "high"|"medium"|"low" }
+    // 토큰 전략: 입력은 BE에서 압축(성적 5건·출석 집계·상담 3건 150자) → 입력 ~300-500토큰, 출력 1000 이내
+    return this.generateResponse(AI_PROMPTS.COUNSEL_PREP, studentData, 1000);
   },
 };

@@ -8,6 +8,8 @@ const router = new Hono();
 router.get("/", studentController.getStudents);
 router.get("/:studentId", authMiddleware, studentController.getStudentById);
 router.get("/:studentId/counsels", authMiddleware, counselController.getCounselHistory);
+router.post("/:studentId/counsels", authMiddleware, counselController.createCounsel);
+router.get("/:studentId/counsel-prep", authMiddleware, counselController.getCounselPrep);
 router.post("/link", authMiddleware, studentController.linkParentAndStudent);
 router.post("/mapping-info", authMiddleware, studentController.getMappingByStudentId);
 router.get("/counsels/:counselId/analyze", authMiddleware, counselController.analyzeCounsel);
